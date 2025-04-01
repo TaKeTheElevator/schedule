@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Школьное расписание</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            100: '#1a1a1a',
+                            200: '#222222',
+                            300: '#2a2a2a',
+                            400: '#333333',
+                            500: '#3d3d3d',
+                            600: '#4a4a4a',
+                            700: '#5a5a5a',
+                        },
+                        indigo: {
+                            150: '#e0e7ff',
+                            250: '#c7d2fe',
+                        }
+                    },
+                    boxShadow: {
+                        'lesson': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        'lesson-dark': '0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.15)',
+                        'lesson-glow': '0 0 25px rgba(126, 34, 206, 0.4)'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s infinite',
+                        'wave': 'wave 6s linear infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'bounce-slow': 'bounce 5s infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out'
+                    },
+                    keyframes: {
+                        wave: {
+                            '0%': { backgroundPosition: '0% 50%' },
+                            '50%': { backgroundPosition: '100% 50%' },
+                            '100%': { backgroundPosition: '0% 50%' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    },
+                    fontFamily: {
+                        'display': ['"Rubik"', 'sans-serif'],
+                        'body': ['"Inter"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Подключаем Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        .day-tab.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px -5px rgba(99, 102, 241, 0.3);
+        }
+        .schedule-card {
+            transition: all 0.4s ease;
+            border-left-width: 6px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            background: linear-gradient(145deg, #ffffff, #f9f9f9);
+        }
+        .dark .schedule-card {
+            background: linear-gradient(145deg, #2a2a2a, #222222);
+        }
+        .schedule-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .schedule-card:hover::before {
+            opacity: 1;
+        }
+        .schedule-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+        }
+        .schedule-card:hover.dark {
+            box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+        }
+        .modal {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .modal.hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+        }
+        html {
+            height: 100%;
+        }
+        body {
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .subject-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .schedule-card {
+            border-left: 6px solid;
+        }
+        .break-card {
+            background: linear-gradient(145deg, #f3f4f6, #eceff4);
+            border-left: 6px solid #6b7280;
+        }
+        .dark .break-card {
+            background: linear-gradient(145deg, #2d2d2d, #252525);
+            border-left: 6px solid #6b7280;
+        }
+        .long-break-card {
+            background: linear-gradient(145deg, #e5e7eb, #d1d5db);
+            border-left: 6px solid #4b5563;
+        }
+        .dark .long-break-card {
+            background: linear-gradient(145deg, #343434, #2c2c2c);
+            border-left: 6px solid #9ca3af;
+        }
+        .time-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            border-radius: 0 16px 0 16px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .lesson-pattern {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            opacity: 0.1;
+            background: currentColor;
+            clip-path: polygon(0 100%, 100% 100%, 100% 0);
+        }
+        .day-tabs-container {
+            scrollbar-width: none;
+        }
+        .day-tabs-container::-webkit-scrollbar {
+            display: none;
+        }
+        .admin-key-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 450px;
+        }
+        .admin-key-container.dark {
+            background: linear-gradient(145deg, #2a2a2a, #222222);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+        }
+        .progress-bar {
+            height: 8px;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.1);
+            position: relative;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .dark .progress-bar {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .progress-bar-fill {
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            border-radius: 4px;
+            animation: wave 6s linear infinite;
+            background-size: 200% 100%;
+        }
+        .lesson-time {
+            font-family: 'Courier Prime', monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-size: 1.1rem;
+        }
+        .break-time {
+            font-family: 'Courier Prime', monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-size: 1.1rem;
+        }
+        .floating-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            filter: blur(40px);
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            opacity: 0;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        .day-content {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-indigo-50 dark:from-dark-100 dark:to-dark-300 text-gray-800 dark:text-gray-200 flex flex-col font-body">
+    <!-- Floating Shapes Background -->
+    <div class="floating-shapes">
+        <div class="shape bg-indigo-400 w-64 h-64 top-20 left-10 animate-float animation-delay-100"></div>
+        <div class="shape bg-purple-500 w-96 h-96 bottom-20 right-10 animate-float animation-delay-300"></div>
+        <div class="shape bg-blue-400 w-80 h-80 top-1/2 left-1/3 animate-float animation-delay-500"></div>
+    </div>
+
+    <!-- Theme and Admin Controls -->
+    <div class="absolute top-6 right-6 flex items-center gap-3">
+        <!-- Admin Key Button -->
+        <button id="adminKeyBtn" class="p-3 rounded-full bg-white dark:bg-dark-400 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-500 transition-all transform hover:scale-110 shadow-md hover:shadow-lg group">
+            <i class="fas fa-key animate-pulse group-hover:animate-none"></i>
+        </button>
+        <!-- Theme Toggle -->
+        <button id="themeToggle" class="p-3 rounded-full bg-white dark:bg-dark-300 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-400 transition-all transform hover:scale-110 shadow-md hover:shadow-lg">
+            <i id="themeIcon" class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- Admin Key Modal -->
+    <div id="adminModal" class="modal fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
+        <div class="bg-white dark:bg-dark-200 rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl transform transition-all duration-300">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-5 flex items-center">
+                <i class="fas fa-lock mr-3 text-indigo-600 dark:text-indigo-400"></i> Административный доступ
+            </h2>
+            <input id="adminKeyInput" type="password" placeholder="Введите ключ администратора" class="w-full p-4 border-2 border-gray-200 dark:border-dark-400 rounded-xl mb-5 bg-white dark:bg-dark-300 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg" autocomplete="new-password">
+            <div class="flex justify-end space-x-4">
+                <button onclick="hideAdminModal()" class="px-5 py-2.5 bg-gray-200 dark:bg-dark-500 text-gray-800 dark:text-white rounded-xl hover:bg-gray-300 dark:hover:bg-dark-600 transition transform hover:-translate-x-1 shadow hover:shadow-md">Отмена</button>
+                <button onclick="checkAdminKey()" class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition transform hover:translate-x-1 flex items-center shadow-lg hover:shadow-indigo-500/30">
+                    <i class="fas fa-lock-open mr-2"></i> Войти
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 hidden">
+        <div class="bg-white dark:bg-dark-200 rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-5 flex items-center">
+                <i class="fas fa-edit mr-3 text-indigo-600 dark:text-indigo-400"></i> Редактировать урок
+            </h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium">Предмет</label>
+                    <input id="editSubject" type="text" class="w-full p-4 border-2 border-gray-200 dark:border-dark-400 rounded-xl bg-white dark:bg-dark-300 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium">Кабинет</label>
+                    <input id="editRoom" type="text" class="w-full p-4 border-2 border-gray-200 dark:border-dark-400 rounded-xl bg-white dark:bg-dark-300 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 mb-2 font-medium">Учитель</label>
+                    <input id="editTeacher" type="text" class="w-full p-4 border-2 border-gray-200 dark:border-dark-400 rounded-xl bg-white dark:bg-dark-300 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-4 mt-8">
+                <button onclick="hideEditModal()" class="px-5 py-2.5 bg-gray-200 dark:bg-dark-500 text-gray-800 dark:text-white rounded-xl hover:bg-gray-300 dark:hover:bg-dark-600 transition transform hover:-translate-x-1 shadow hover:shadow-md">Отмена</button>
+                <button onclick="saveLesson()" class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition transform hover:translate-x-1 flex items-center shadow-lg hover:shadow-indigo-500/30">
+                    <i class="fas fa-save mr-2"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-10 flex-grow max-w-6xl">
+        <!-- Header with Glow Effect -->
+        <header class="mb-12 text-center relative">
+            <div class="absolute -left-10 -top-10 w-28 h-28 bg-indigo-400 rounded-full filter blur-3xl opacity-20 dark:opacity-10 -z-10"></div>
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-purple-500 rounded-full filter blur-3xl opacity-20 dark:opacity-10 -z-10"></div>
+            
+            <div class="relative">
+                <h1 class="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-4 font-display tracking-tight">
+                    Школьное расписание
+                </h1>
+                <p class="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                    Планируйте свою неделю эффективно и организованно
+                </p>
+                
+                <div id="dailyQuote" class="mt-8 p-6 bg-white/70 dark:bg-dark-300/90 backdrop-blur-sm rounded-xl max-w-3xl mx-auto text-indigo-800 dark:text-indigo-200 italic border-2 border-indigo-100 dark:border-dark-500 shadow-inner transform transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
+                    <!-- Daily quote will be inserted here -->
+                </div>
+            </div>
+        </header>
+
+        <!-- Days Navigation with Custom Scrollbar -->
+        <div class="day-tabs-container flex overflow-x-auto mb-10 pb-3 scroll-smooth">
+            <div class="flex space-x-4 mx-auto px-4">
+                <button onclick="showDay('monday')" class="day-tab flex-shrink-0 px-7 py-3.5 bg-white/80 dark:bg-dark-300 text-indigo-700 dark:text-indigo-300 rounded-xl font-semibold text-lg active transition-all hover:shadow-md flex items-center backdrop-blur-sm border border-gray-200 dark:border-dark-500 hover:border-indigo-300 dark:hover:border-indigo-500/50">
+                    <i class="fas fa-calendar-day mr-3"></i> Понедельник
+                </button>
+                <button onclick="showDay('tuesday')" class="day-tab flex-shrink-0 px-7 py-3.5 bg-white/80 dark:bg-dark-300 text-indigo-700 dark:text-indigo-300 rounded-xl font-semibold text-lg transition-all hover:shadow-md flex items-center backdrop-blur-sm border border-gray-200 dark:border-dark-500 hover:border-indigo-300 dark:hover:border-indigo-500/50">
+                    <i class="fas fa-calendar-day mr-3"></i> Вторник
+                </button>
+                <button onclick="showDay('wednesday')" class="day-tab flex-shrink-0 px-7 py-3.5 bg-white/80 dark:bg-dark-300 text-indigo-700 dark:text-indigo-300 rounded-xl font-semibold text-lg transition-all hover:shadow-md flex items-center backdrop-blur-sm border border-gray-200 dark:border-dark-500 hover:border-indigo-300 dark:hover:border-indigo-500/50">
+                    <i class="fas fa-calendar-day mr-3"></i> Среда
+                </button>
+                <button onclick="showDay('thursday')" class="day-tab flex-shrink-0 px-7 py-3.5 bg-white/80 dark:bg-dark-300 text-indigo-700 dark:text-indigo-300 rounded-xl font-semibold text-lg transition-all hover:shadow-md flex items-center backdrop-blur-sm border border-gray-200 dark:border-dark-500 hover:border-indigo-300 dark:hover:border-indigo-500/50">
+                    <i class="fas fa-calendar-day mr-3"></i> Четверг
+                </button>
+                <button onclick="showDay('friday')" class="day-tab flex-shrink-0 px-7 py-3.5 bg-white/80 dark:bg-dark-300 text-indigo-700 dark:text-indigo-300 rounded-xl font-semibold text-lg transition-all hover:shadow-md flex items-center backdrop-blur-sm border border-gray-200 dark:border-dark-500 hover:border-indigo-300 dark:hover:border-indigo-500/50">
+                    <i class="fas fa-calendar-day mr-3"></i> Пятница
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Bar with Animation -->
+        <div class="mb-10">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Прогресс недели</span>
+                <div class="flex items-center">
+                    <span class="text-sm font-semibold text-indigo-600 dark:text-indigo-400 mr-2" id="weekProgress">0%</span>
+                    <div class="w-16 h-6 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                        <div id="weekProgressEmoji" class="text-sm">😴</div>
+                    </div>
+                </div>
+            </div>
+            <div class="h-4 w-full bg-gray-200 dark:bg-dark-400 rounded-full overflow-hidden shadow-inner">
+                <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-white/30 to-transparent"></div>
+                    <div id="progressFill" class="h-full w-0 transition-all duration-1000 ease-out"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Content -->
+        <div id="scheduleContent">
+            <!-- Monday -->
+            <div id="monday" class="day-content animate-fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Lessons will be loaded here -->
+                </div>
+                <button onclick="addNewLesson('monday')" class="edit-btn mt-8 w-full py-5 bg-gradient-to-r from-indigo-100 to-indigo-200 dark:from-dark-600 dark:to-dark-700 text-indigo-800 dark:text-indigo-300 rounded-2xl hover:from-indigo-200 hover:to-indigo-300 dark:hover:from-dark-700 dark:hover:to-dark-800 transition-all hover:shadow-lg hidden flex items-center justify-center transform hover:-translate-y-1 border-2 border-dashed border-indigo-300 dark:border-indigo-800/50 hover:border-indigo-400 dark:hover:border-indigo-600/50">
+                    <i class="fas fa-plus-circle mr-3 text-xl"></i> 
+                    <span class="font-semibold">Добавить урок</span>
+                </button>
+            </div>
+
+            <!-- Other days content will be loaded dynamically -->
+            <div id="tuesday" class="day-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <button onclick="addNewLesson('tuesday')" class="edit-btn mt-8 w-full py-5 bg-gradient-to-r from-indigo-100 to-indigo-200 dark:from-dark-600 dark:to-dark-700 text-indigo-800 dark:text-indigo-300 rounded-2xl hover:from-indigo-200 hover:to-indigo-300 dark:hover:from-dark-700 dark:hover:to-dark-800 transition-all hover:shadow-lg hidden flex items-center justify-center transform hover:-translate-y-1 border-2 border-dashed border-indigo-300 dark:border-indigo-800/50 hover:border-indigo-400 dark:hover:border-indigo-600/50">
+                    <i class="fas fa-plus-circle mr-3 text-xl"></i> 
+                    <span class="font-semibold">Добавить урок</span>
+                </button>
+            </div>
+
+            <div id="wednesday" class="day-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <button onclick="addNewLesson('wednesday')" class="edit-btn mt-8 w-full py-5 bg-gradient-to-r from-indigo-100 to-indigo-200 dark:from-dark-600 dark:to-dark-700 text-indigo-800 dark:text-indigo-300 rounded-2xl hover:from-indigo-200 hover:to-indigo-300 dark:hover:from-dark-700 dark:hover:to-dark-800 transition-all hover:shadow-lg hidden flex items-center justify-center transform hover:-translate-y-1 border-2 border-dashed border-indigo-300 dark:border-indigo-800/50 hover:border-indigo-400 dark:hover:border-indigo-600/50">
+                    <i class="fas fa-plus-circle mr-3 text-xl"></i> 
+                    <span class="font-semibold">Добавить урок</span>
+                </button>
+            </div>
+
+            <div id="thursday" class="day-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <button onclick="addNewLesson('thursday')" class="edit-btn mt-8 w-full py-5 bg-gradient-to-r from-indigo-100 to-indigo-200 dark:from-dark-600 dark:to-dark-700 text-indigo-800 dark:text-indigo-300 rounded-2xl hover:from-indigo-200 hover:to-indigo-300 dark:hover:from-dark-700 dark:hover:to-dark-800 transition-all hover:shadow-lg hidden flex items-center justify-center transform hover:-translate-y-1 border-2 border-dashed border-indigo-300 dark:border-indigo-800/50 hover:border-indigo-400 dark:hover:border-indigo-600/50">
+                    <i class="fas fa-plus-circle mr-3 text-xl"></i> 
+                    <span class="font-semibold">Добавить урок</span>
+                </button>
+            </div>
+
+            <div id="friday" class="day-content hidden">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <button onclick="addNewLesson('friday')" class="edit-btn mt-8 w-full py-5 bg-gradient-to-r from-indigo-100 to-indigo-200 dark:from-dark-600 dark:to-dark-700 text-indigo-800 dark:text-indigo-300 rounded-2xl hover:from-indigo-200 hover:to-indigo-300 dark:hover:from-dark-700 dark:hover:to-dark-800 transition-all hover:shadow-lg hidden flex items-center justify-center transform hover:-translate-y-1 border-2 border-dashed border-indigo-300 dark:border-indigo-800/50 hover:border-indigo-400 dark:hover:border-indigo-600/50">
+                    <i class="fas fa-plus-circle mr-3 text-xl"></i> 
+                    <span class="font-semibold">Добавить урок</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar with Current Lesson Info -->
+    <footer class="py-4 text-center text-gray-600 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-dark-300 bg-white/50 dark:bg-dark-200/50 backdrop-blur-sm">
+        <div class="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center max-w-6xl">
+            <div class="mb-2 md:mb-0">
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400">Расписание класса</span> 
+                | <span id="currentDate" class="font-medium"></span>
+            </div>
+            <div class="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-6">
+                <div class="font-mono text-lg text-indigo-600 dark:text-indigo-400" id="currentTime"></div>
+                <div class="hidden md:block text-gray-500 dark:text-gray-500">|</div>
+                <div class="flex items-center">
+                    <span id="currentLesson" class="font-medium mr-2">—</span>
+                    <span id="nextLesson" class="text-sm text-gray-500 dark:text-gray-400">Далее: —</span>
+                </div>
+                <div class="hidden md:block text-gray-500 dark:text-gray-500">|</div>
+                <div>
+                    <span id="lastUpdated">Обновлено: <span class="font-medium">только что</span></span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Admin Key Input Overlay (Fixed Center) -->
+    <div id="adminKeyContainer" class="admin-key-container hidden dark:bg-dark-200 shadow-2xl backdrop-blur-sm border border-gray-200 dark:border-dark-500">
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center justify-center">
+            <i class="fas fa-key mx-3 text-indigo-600 dark:text-indigo-400"></i> Административный доступ
+        </h2>
+        <input id="adminKeyInputMain" type="password" placeholder="Введите ключ администратора" class="w-full p-4 border-2 border-gray-200 dark:border-dark-400 rounded-xl mb-6 bg-white dark:bg-dark-300 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-lg" autocomplete="new-password">
+        <div class="flex justify-center space-x-4">
+            <button onclick="hideAdminKeyContainer()" class="px-5 py-2.5 bg-gray-200 dark:bg-dark-500 text-gray-800 dark:text-white rounded-xl hover:bg-gray-300 dark:hover:bg-dark-600 transition transform hover:-translate-x-1 shadow hover:shadow-md">Отмена</button>
+            <button onclick="checkAdminKeyMain()" class="px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition transform hover:translate-x-1 flex items-center shadow-lg hover:shadow-indigo-500/30">
+                <i class="fas fa-unlock mr-2"></i> Подтвердить
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const ADMIN_KEY = "class2024";
+        const dailyQuotes = {
+            monday: "✊ Понедельник — сложный день, но наша организованность делает его продуктивным!",
+            tuesday: "🚀 Вторник — день возможностей! Вперёд к новым знаниям!",
+            wednesday: "🌈 Среда — уже середина недели! Так держать!",
+            thursday: "💪 Четверг — день, когда можно добиться многого!",
+            friday: "🎉 Пятница! Последний рывок перед заслуженным отдыхом!"
+        };
+        
+        const weekProgressEmojis = {
+            0: "😴",
+            20: "🤔",
+            40: "🙂",
+            60: "😊",
+            80: "🤩",
+            100: "🎉"
+        };
+        
+        // Subject icons with more variety
+        const subjectIcons = {
+            "математика": { icon: "fa-square-root-variable", color: "bg-red-100 dark:bg-red-900/80", border: "border-red-500" },
+            "русский язык": { icon: "fa-language", color: "bg-blue-100 dark:bg-blue-900/80", border: "border-blue-500" },
+            "литература": { icon: "fa-book-open", color: "bg-green-100 dark:bg-green-900/80", border: "border-green-500" },
+            "физика": { icon: "fa-atom", color: "bg-purple-100 dark:bg-purple-900/80", border: "border-purple-500" },
+            "химия": { icon: "fa-flask", color: "bg-amber-100 dark:bg-amber-900/80", border: "border-amber-500" },
+            "биология": { icon: "fa-dna", color: "bg-lime-100 dark:bg-lime-900/80", border: "border-lime-500" },
+            "география": { icon: "fa-globe", color: "bg-cyan-100 dark:bg-cyan-900/80", border: "border-cyan-500" },
+            "история": { icon: "fa-landmark", color: "bg-orange-100 dark:bg-orange-900/80", border: "border-orange-500" },
+            "обществознание": { icon: "fa-users", color: "bg-emerald-100 dark:bg-emerald-900/80", border: "border-emerald-500" },
+            "физкультура": { icon: "fa-running", color: "bg-sky-100 dark:bg-sky-900/80", border: "border-sky-500" },
+            "информатика": { icon: "fa-laptop-code", color: "bg-indigo-100 dark:bg-indigo-900/80", border: "border-indigo-500" },
+            "английский язык": { icon: "fa-comment-dots", color: "bg-pink-100 dark:bg-pink-900/80", border: "border-pink-500" },
+            "алгебра": { icon: "fa-infinity", color: "bg-red-200 dark:bg-red-800/80", border: "border-red-500" },
+            "геометрия": { icon: "fa-shapes", color: "bg-red-200 dark:bg-red-800/80", border: "border-red-500" },
+            "музыка": { icon: "fa-music", color: "bg-fuchsia-100 dark:bg-fuchsia-900/80", border: "border-fuchsia-500" },
+            "технология": { icon: "fa-tools", color: "bg-rose-100 dark:bg-rose-900/80", border: "border-rose-500" },
+            "изо": { icon: "fa-palette", color: "bg-violet-100 dark:bg-violet-900/80", border: "border-violet-500" },
+            "обж": { icon: "fa-shield-alt", color: "bg-amber-100 dark:bg-amber-900/80", border: "border-amber-500" },
+            "default": { icon: "fa-book", color: "bg-gray-200 dark:bg-gray-700/80", border: "border-gray-500" }
+        };
+        
+        // Увеличенные времена уроков (60 минут) и перемены (10-20 минут)
+        const lessonTimes = [
+            { start: "08:00", end: "09:00", breakDuration: 15 },    // 1 урок
+            { start: "09:15", end: "10:15", breakDuration: 15 },    // 2 урок
+            { start: "10:30", end: "11:30", breakDuration: 25 },    // 3 урок + большая перемена
+            { start: "11:55", end: "12:55", breakDuration: 20 },    // 4 урок + большая перемена
+            { start: "13:15", end: "14:15", breakDuration: 15 },    // 5 урок
+            { start: "14:30", end: "15:30", breakDuration: 15 },    // 6 урок
+            { start: "15:45", end: "16:45", breakDuration: 15 }     // 7 урок
+        ];
+        
+        let isAdmin = false;
+        let currentEditing = { day: null, index: null };
+        let scheduleData = {
+            monday: [
+                { subject: "Алгебра", room: "203", teacher: "Иванова А.П.", type: "lesson" },
+                { subject: "Русский язык", room: "105", teacher: "Петрова С.И.", type: "lesson" },
+                { subject: "Физика", room: "301", teacher: "Сидоров В.М.", type: "lesson" },
+                { subject: "История", room: "208", teacher: "Кузнецова О.Л.", type: "lesson" },
+                { subject: "Геометрия", room: "203", teacher: "Иванова А.П.", type: "lesson" }
+            ],
+            tuesday: [
+                { subject: "Литература", room: "105", teacher: "Петрова С.И.", type: "lesson" },
+                { subject: "Английский язык", room: "210", teacher: "Смирнова Е.В.", type: "lesson" },
+                { subject: "Химия", room: "302", teacher: "Фролова Н.А.", type: "lesson" },
+                { subject: "Физкультура", room: "Спортзал", teacher: "Козлов А.В.", type: "lesson" }
+            ],
+            wednesday: [
+                { subject: "География", room: "207", teacher: "Волков Д.С.", type: "lesson" },
+                { subject: "Биология", room: "304", teacher: "Зайцева Л.М.", type: "lesson" },
+                { subject: "Физкультура", room: "Спортзал", teacher: "Козлов А.В.", type: "lesson" },
+                { subject: "Информатика", room: "401", teacher: "Николаев П.К.", type: "lesson" }
+            ],
+            thursday: [
+                { subject: "Алгебра", room: "203", teacher: "Иванова А.П.", type: "lesson" },
+                { subject: "Геометрия", room: "203", teacher: "Иванова А.П.", type: "lesson" },
+                { subject: "Обществознание", room: "208", teacher: "Кузнецова О.Л.", type: "lesson" },
+                { subject: "Английский язык", room: "210", teacher: "Смирнова Е.В.", type: "lesson" }
+            ],
+            friday: [
+                { subject: "Физика", room: "301", teacher: "Сидоров В.М.", type: "lesson" },
+                { subject: "Английский язык", room: "210", teacher: "Смирнова Е.В.", type: "lesson" },
+                { subject: "Литература", room: "105", teacher: "Петрова С.И.", type: "lesson" },
+                { subject: "Физкультура", room: "Спортзал", teacher: "Козлов А.В.", type: "lesson" }
+            ]
+        };
+
+        // DOM Content Loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load saved schedule or default
+            loadSchedule();
+            
+            // Initialize theme
+            initTheme();
+            
+            // Show Monday by default
+            showDay('monday');
+            
+            // Set up theme toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            
+            // Set up admin key button
+            document.getElementById('adminKeyBtn').addEventListener('click', showAdminKeyContainer);
+            
+            // Check if admin mode is already active
+            if (localStorage.getItem('isAdmin') === 'true') {
+                activateAdminMode();
+            }
+            
+            // Set last updated time
+            updateLastModifiedTime();
+            
+            // Set current date
+            updateCurrentDate();
+            
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            // Update week progress
+            updateWeekProgress();
+            
+            // Start current lesson checker
+            updateCurrentLesson();
+            setInterval(updateCurrentLesson, 60000);
+            
+            // Add floating animations
+            addFloatingAnimations();
+        });
+
+        // Theme functions
+        function initTheme() {
+            if (localStorage.getItem('darkMode') === 'true' || 
+                (window.matchMedia('(prefers-color-scheme: dark)').matches && !localStorage.getItem('darkMode'))) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('themeIcon').classList.replace('fa-moon', 'fa-sun');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('themeIcon').classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.classList.replace('fa-sun', 'fa-moon');
+                localStorage.setItem('darkMode', 'false');
+            } else {
+                html.classList.add('dark');
+                icon.classList.replace('fa-moon', 'fa-sun');
+                localStorage.setItem('darkMode', 'true');
+            }
+            
+            // Add confetti effect on theme change
+            createConfetti();
+        }
+
+        function showAdminKeyContainer() {
+            const container = document.getElementById('adminKeyContainer');
+            container.classList.remove('hidden');
+            
+            // Focus input
+            setTimeout(() => {
+                document.getElementById('adminKeyInputMain').focus();
+            }, 100);
+        }
+
+        function hideAdminKeyContainer() {
+            const container = document.getElementById('adminKeyContainer');
+            container.classList.add('hidden');
+        }
+
+        // Clock functions
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ru-RU');
+            document.getElementById('currentTime').textContent = timeStr;
+        }
+
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            };
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('ru-RU', options);
+        }
+
+        function updateCurrentLesson() {
+            const now = new Date();
+            const currentDay = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][now.getDay()];
+            const currentHour = now.getHours();
+            const currentMinutes = now.getMinutes();
+            
+            // School is open only on weekdays
+            if (currentDay === 'sunday' || currentDay === 'saturday') {
+                document.getElementById('currentLesson').textContent = "Выходной";
+                document.getElementById('nextLesson').textContent = "Занятий нет";
+                return;
+            }
+            
+            let currentLesson = null;
+            let nextLesson = null;
+            let isBreak = false;
+            
+            // Check each lesson time
+            for (let i = 0; i < lessonTimes.length; i++) {
+                const [startHour, startMinute] = lessonTimes[i].start.split(':').map(Number);
+                const [endHour, endMinute] = lessonTimes[i].end.split(':').map(Number);
+                
+                // Convert to minutes for easier comparison
+                const nowMinutes = currentHour * 60 + currentMinutes;
+                const startMinutes = startHour * 60 + startMinute;
+                const endMinutes = endHour * 60 + endMinute;
+                
+                // Check if current time is within this lesson
+                if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+                    currentLesson = { index: i + 1, start: lessonTimes[i].start, end: lessonTimes[i].end };
+                    break;
+                }
+                
+                // Check if it's break time after this lesson (before next lesson)
+                if (i < lessonTimes.length - 1) {
+                    const nextStart = lessonTimes[i + 1].start.split(':').map(Number);
+                    const nextStartMinutes = nextStart[0] * 60 + nextStart[1];
+                    
+                    if (nowMinutes > endMinutes && nowMinutes < nextStartMinutes) {
+                        isBreak = true;
+                        currentLesson = null;
+                        nextLesson = { index: i + 2, start: lessonTimes[i + 1].start, end: lessonTimes[i + 1].end };
+                        break;
+                    }
+                }
+            }
+            
+            // Update UI
+            if (currentLesson) {
+                document.getElementById('currentLesson').textContent = `${currentLesson.index}-й урок (${currentLesson.start}-${currentLesson.end})`;
+                if (scheduleData[currentDay] && scheduleData[currentDay][currentLesson.index - 1]) {
+                    const lesson = scheduleData[currentDay][currentLesson.index - 1];
+                    document.getElementById('nextLesson').textContent = `Дальше: ${lesson.subject} в ${lesson.room}`;
+                } else {
+                    document.getElementById('nextLesson').textContent = "Дальше: конец занятий";
+                }
+            } else if (isBreak && nextLesson) {
+                document.getElementById('currentLesson').textContent = `Перемена (до ${nextLesson.start})`;
+                if (scheduleData[currentDay] && scheduleData[currentDay][nextLesson.index - 1]) {
+                    const lesson = scheduleData[currentDay][nextLesson.index - 1];
+                    document.getElementById('nextLesson').textContent = `Дальше: ${lesson.subject} в ${lesson.room}`;
+                } else {
+                    document.getElementById('nextLesson').textContent = "Дальше: конец занятий";
+                }
+            } else {
+                if (currentHour < 8) {
+                    document.getElementById('currentLesson').textContent = "Занятия ещё не начались";
+                    document.getElementById('nextLesson').textContent = `Первый урок в ${lessonTimes[0].start}`;
+                } else if (currentHour >= 16) {
+                    document.getElementById('currentLesson').textContent = "Занятия закончились";
+                    document.getElementById('nextLesson').textContent = "Завтра новое расписание";
+                } else {
+                    document.getElementById('currentLesson').textContent = "Перерыв между уроками";
+                    document.getElementById('nextLesson').textContent = "";
+                }
+            }
+        }
+
+        function updateWeekProgress() {
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0 - воскресенье, 1 - понедельник и т.д.
+            const currentHour = now.getHours();
+            
+            // Рассчитываем прогресс недели (от понедельника до пятницы)
+            let progress = 0;
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Рабочие дни
+                const dayProgress = ((dayOfWeek - 1) / 5) * 100;
+                const hourProgress = (currentHour / 24) * 20; // Добавляем 20% за каждый день
+                progress = dayProgress + hourProgress;
+                if (progress > 100) progress = 100;
+            } else if (dayOfWeek === 0 || dayOfWeek === 6) { // Выходные
+                progress = 100;
+            }
+            
+            document.getElementById('weekProgress').textContent = Math.round(progress) + '%';
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // Update emoji based on progress
+            let emoji = "🎉";
+            if (progress < 20) emoji = "😴";
+            else if (progress < 40) emoji = "🤔";
+            else if (progress < 60) emoji = "🙂";
+            else if (progress < 80) emoji = "😊";
+            else if (progress < 100) emoji = "🤩";
+            document.getElementById('weekProgressEmoji').textContent = emoji;
+        }
+
+        // Admin key functions
+        function checkAdminKeyMain() {
+            const input = document.getElementById('adminKeyInputMain');
+            if (input.value === ADMIN_KEY) {
+                activateAdminMode();
+                hideAdminKeyContainer();
+                input.value = '';
+                createConfetti();
+            } else {
+                alert('Неверный ключ администратора!');
+                input.value = '';
+            }
+        }
+
+        function checkAdminKey() {
+            const input = document.getElementById('adminKeyInput');
+            if (input.value === ADMIN_KEY) {
+                activateAdminMode();
+                hideAdminModal();
+                input.value = '';
+                createConfetti();
+            } else {
+                alert('Неверный ключ администратора!');
+                input.value = '';
+            }
+        }
+
+        function activateAdminMode() {
+            isAdmin = true;
+            localStorage.setItem('isAdmin', 'true');
+            updateEditButtonsVisibility();
+            
+            // Change admin key button style to indicate active mode
+            const adminBtn = document.getElementById('adminKeyBtn');
+            adminBtn.classList.remove('bg-white', 'dark:bg-dark-400');
+            adminBtn.classList.add('bg-indigo-100', 'dark:bg-indigo-900/50', 'text-indigo-600', 'dark:text-indigo-300', 'ring-2', 'ring-indigo-400');
+            
+            // Show notification
+            showNotification('Режим администратора активирован!', 'success');
+        }
+
+        // Schedule functions
+        function loadSchedule() {
+            const savedSchedule = localStorage.getItem('classSchedule');
+            if (savedSchedule) {
+                scheduleData = JSON.parse(savedSchedule);
+            }
+            
+            // Render all days
+            ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].forEach(day => {
+                renderDay(day);
+            });
+        }
+
+        function saveSchedule() {
+            localStorage.setItem('classSchedule', JSON.stringify(scheduleData));
+            updateLastModifiedTime();
+            showNotification('Расписание сохранено!', 'success');
+        }
+
+        function renderDay(day) {
+            const container = document.getElementById(day).querySelector('.grid');
+            container.innerHTML = '';
+            
+            let dayLessons = scheduleData[day];
+            let lessonsWithBreaks = [];
+            
+            // Добавляем перемены между уроками
+            for (let i = 0; i < dayLessons.length; i++) {
+                // Добавляем урок
+                lessonsWithBreaks.push(dayLessons[i]);
+                
+                // Добавляем перемену после урока (кроме последнего урока)
+                if (i < dayLessons.length - 1) {
+                    const breakDuration = (i === 2 || i === 3) ? 25 : 15; // Большие перемены после 3 и 4 урока
+                    lessonsWithBreaks.push({
+                        type: "break",
+                        duration: breakDuration,
+                        isLongBreak: breakDuration === 25
+                    });
+                }
+            }
+            
+            // Рендерим уроки и перемены с правильным временем
+            lessonsWithBreaks.forEach((item, index) => {
+                if (item.type === "lesson") {
+                    // Находим индекс урока (игнорируем перемены)
+                    const lessonIndex = scheduleData[day].findIndex(l => l === item);
+                    
+                    if (lessonIndex >= 0 && lessonIndex < lessonTimes.length) {
+                        const lessonTime = lessonTimes[lessonIndex];
+                        const subjectLower = item.subject.toLowerCase();
+                        const iconInfo = subjectIcons[subjectLower] || subjectIcons['default'];
+                        
+                        const lessonHTML = `
+                            <div class="schedule-card animate-fade-in bg-white dark:bg-dark-200 p-6 rounded-2xl shadow-lg dark:shadow-lg-dark relative ${iconInfo.border} hover:shadow-lg hover:shadow-indigo-500/10 dark:hover:shadow-indigo-500/20">
+                                <div class="absolute top-0 right-0 ${iconInfo.color} ${iconInfo.border} time-badge font-mono text-gray-800 dark:text-white">
+                                    ${lessonTime.start}-${lessonTime.end}
+                                </div>
+                                <div class="flex items-start space-x-5">
+                                    <div class="subject-icon ${iconInfo.color} text-indigo-700 dark:text-indigo-300 mt-1 shadow-lg transform transition hover:rotate-12">
+                                        <i class="fas ${iconInfo.icon}"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-1">${item.subject}</h3>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">${lessonIndex + 1}-й урок дня</p>
+                                            </div>
+                                            <div class="flex space-x-3">
+                                                <button class="edit-btn hidden p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transform hover:scale-110 transition" onclick="event.stopPropagation(); showEditModal(${lessonIndex}, '${day}')">
+                                                    <i class="fas fa-pen-to-square"></i>
+                                                </button>
+                                                <button class="delete-btn hidden p-2 text-gray-400 hover:text-red-600 transform hover:scale-110 transition" onclick="event.stopPropagation(); deleteLesson(${lessonIndex}, '${day}')">
+                                                    <i class="fas fa-trash-can"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="mt-5 pt-4 border-t border-gray-200 dark:border-dark-400">
+                                            <div class="flex items-center text-base text-gray-700 dark:text-gray-300 mb-3">
+                                                <i class="fas fa-door-open text-gray-500 dark:text-gray-400 mr-3 w-6 text-center"></i>
+                                                <span class="font-medium">${item.room.startsWith('Каб. ') ? item.room : 'Каб. ' + item.room}</span>
+                                            </div>
+                                            <div class="flex items-center text-base text-gray-700 dark:text-gray-300">
+                                                <i class="fas fa-chalkboard-user text-gray-500 dark:text-gray-400 mr-3 w-6 text-center"></i>
+                                                <span class="font-medium">${item.teacher}</span>
+                                            </div>
+                                        </div>
+                                        <div class="lesson-pattern"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        container.innerHTML += lessonHTML;
+                    }
+                } else if (item.type === "break") {
+                    // Находим предыдущий урок для определения времени перемены
+                    const lessonIndex = scheduleData[day].findIndex(l => l === lessonsWithBreaks[index - 1]);
+                    
+                    if (lessonIndex >= 0 && lessonIndex < lessonTimes.length - 1) {
+                        // Время перемены - это конец текущего урока + время перемены
+                        const breakStart = lessonTimes[lessonIndex].end;
+                        const breakEnd = lessonTimes[lessonIndex + 1].start;
+                        
+                        const breakColorClass = item.isLongBreak ? "long-break-card" : "break-card";
+                        const clockIcon = item.isLongBreak ? "fa-clock" : "fa-stopwatch";
+                        const breakIconClass = item.isLongBreak ? "text-blue-500 dark:text-blue-400" : "text-gray-500 dark:text-gray-400";
+                        
+                        const breakHTML = `
+                            <div class="schedule-card ${breakColorClass} hover:shadow-lg p-5 rounded-2xl animate-fade-in">
+                                <div class="flex items-center space-x-5">
+                                    <div class="bg-white dark:bg-dark-300 ${breakIconClass} p-4 rounded-xl shadow-lg transform hover:rotate-12 transition">
+                                        <i class="fas ${clockIcon} text-2xl"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-bold text-gray-700 dark:text-gray-300">${item.isLongBreak ? "🍔 Большая перемена" : "☕ Перемена"}</h3>
+                                        <div class="mt-2 text-gray-600 dark:text-gray-400 space-y-2">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-hourglass-half mr-3 w-5"></i>
+                                                <span class="font-medium">${item.duration} минут отдыха</span>
+                                            </div>
+                                            <div class="lesson-time">
+                                                <i class="far fa-clock mr-3 w-5"></i>
+                                                <span>${breakStart}-${breakEnd}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                ${item.isLongBreak ? 
+                                    `<div class="mt-4 italic text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                                        <i class="fas fa-utensils mr-2"></i> Время перекусить и отдохнуть!
+                                    </div>` : ''
+                                }
+                            </div>
+                        `;
+                        container.innerHTML += breakHTML;
+                    }
+                }
+            });
+            
+            // Update edit buttons visibility based on admin mode
+            updateEditButtonsVisibility();
+        }
+
+        function updateLastModifiedTime() {
+            const now = new Date();
+            const options = { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            };
+            document.getElementById('lastUpdated').innerHTML = `Обновлено: <span class="font-medium">${now.toLocaleDateString('ru-RU', options)}</span>`;
+        }
+
+        function updateEditButtonsVisibility() {
+            const editBtns = document.querySelectorAll('.edit-btn');
+            const deleteBtns = document.querySelectorAll('.delete-btn');
+            const addBtns = document.querySelectorAll('button[onclick^="addNewLesson"]');
+            
+            if (isAdmin) {
+                editBtns.forEach(btn => btn.classList.remove('hidden'));
+                deleteBtns.forEach(btn => btn.classList.remove('hidden'));
+                addBtns.forEach(btn => btn.classList.remove('hidden'));
+            } else {
+                editBtns.forEach(btn => btn.classList.add('hidden'));
+                deleteBtns.forEach(btn => btn.classList.add('hidden'));
+                addBtns.forEach(btn => btn.classList.add('hidden'));
+            }
+        }
+
+        // Admin functions
+        function showAdminModal() {
+            document.getElementById('adminModal').classList.remove('hidden');
+        }
+
+        function hideAdminModal() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const colors = {
+                info: 'bg-blue-500',
+                success: 'bg-green-500',
+                warning: 'bg-yellow-500',
+                error: 'bg-red-500'
+            };
+            
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-6 right-6 ${colors[type]} text-white px-5 py-3 rounded-xl shadow-lg z-50 transform translate-y-4 opacity-0 transition-all duration-300`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.remove('translate-y-4', 'opacity-0');
+                notification.classList.add('translate-y-0', 'opacity-100');
+            }, 10);
+            
+            setTimeout(() => {
+                notification.classList.remove('translate-y-0', 'opacity-100');
+                notification.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Lesson editing functions
+        function showEditModal(index, day) {
+            if (!isAdmin) {
+                showAdminKeyContainer();
+                return;
+            }
+            
+            currentEditing = { day, index };
+            const lesson = scheduleData[day][index];
+            
+            document.getElementById('editSubject').value = lesson.subject;
+            document.getElementById('editRoom').value = lesson.room;
+            document.getElementById('editTeacher').value = lesson.teacher;
+            
+            document.getElementById('editModal').classList.remove('hidden');
+            
+            // Focus first input
+            setTimeout(() => {
+                document.getElementById('editSubject').focus();
+            }, 100);
+        }
+
+        function hideEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        function saveLesson() {
+            const { day, index } = currentEditing;
+            
+            // Get values from form
+            const subject = document.getElementById('editSubject').value.trim();
+            const room = document.getElementById('editRoom').value.trim();
+            const teacher = document.getElementById('editTeacher').value.trim();
+            
+            if (!subject || !room || !teacher) {
+                showNotification('Все поля должны быть заполнены!', 'error');
+                return;
+            }
+            
+            // Update schedule data
+            scheduleData[day][index] = { subject, room, teacher, type: "lesson" };
+            
+            // Save and re-render
+            saveSchedule();
+            renderDay(day);
+            hideEditModal();
+        }
+
+        function addNewLesson(day) {
+            if (!isAdmin) {
+                showAdminKeyContainer();
+                return;
+            }
+            
+            // Random color for new lesson
+            const colors = ['indigo', 'blue', 'green', 'purple', 'pink', 'red', 'yellow', 'teal'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            // Add empty lesson
+            scheduleData[day].push({ 
+                subject: "Новый предмет", 
+                room: "000", 
+                teacher: "ФИО", 
+                type: "lesson",
+                color: randomColor
+            });
+            
+            // Save and re-render
+            saveSchedule();
+            renderDay(day);
+            
+            // Scroll to bottom
+            const container = document.getElementById(day);
+            container.scrollTop = container.scrollHeight;
+            
+            // Immediately open edit modal for the new lesson
+            setTimeout(() => {
+                showEditModal(scheduleData[day].length - 1, day);
+            }, 100);
+        }
+
+        function deleteLesson(index, day) {
+            if (!isAdmin) return;
+            
+            if (confirm(`Вы уверены, что хотите удалить урок "${scheduleData[day][index].subject}"?`)) {
+                scheduleData[day].splice(index, 1);
+                saveSchedule();
+                renderDay(day);
+                showNotification('Урок удалён!', 'success');
+            }
+        }
+
+        function showDay(day) {
+            // Hide all day contents
+            document.querySelectorAll('.day-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Show selected day content with animation
+            const dayContent = document.getElementById(day);
+            dayContent.classList.remove('hidden');
+            dayContent.classList.add('animate-fade-in');
+            
+            // Update active tab
+            document.querySelectorAll('.day-tab').forEach(tab => {
+                tab.classList.remove('active', 'bg-indigo-600', 'text-white');
+                tab.classList.add('bg-white/80', 'dark:bg-dark-300');
+            });
+            
+            // Set active tab
+            const tabs = document.querySelectorAll('.day-tab');
+            const dayIndex = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].indexOf(day);
+            tabs[dayIndex].classList.add('active', 'bg-gradient-to-r', 'from-indigo-600', 'to-purple-600', 'text-white');
+            tabs[dayIndex].classList.remove('bg-white/80', 'text-indigo-700', 'dark:bg-dark-300');
+            
+            // Show daily quote with animation
+            const quoteElement = document.getElementById('dailyQuote');
+            quoteElement.classList.add('opacity-0', 'scale-90');
+            quoteElement.textContent = dailyQuotes[day];
+            
+            setTimeout(() => {
+                quoteElement.classList.remove('opacity-0', 'scale-90');
+                quoteElement.classList.add('opacity-100', 'scale-100');
+            }, 10);
+            
+            // Remove animation classes after transition
+            setTimeout(() => {
+                quoteElement.classList.remove('opacity-100', 'scale-100');
+            }, 300);
+        }
+
+        // Visual effects
+        function createConfetti() {
+            const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                document.body.appendChild(confetti);
+                
+                // Animate confetti
+                setTimeout(() => {
+                    confetti.style.opacity = '0.9';
+                    confetti.style.transition = 'all 0.5s ease-out';
+                    confetti.style.transform = `translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 + 100}px) rotate(${Math.random() * 360}deg)`;
+                    
+                    // Remove after animation
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 500);
+                }, 10);
+            }
+        }
+
+        function addFloatingAnimations() {
+            const elements = document.querySelectorAll('.schedule-card, .day-tab');
+            elements.forEach((el, i) => {
+                el.style.animationDelay = `${i * 0.1}s`;
+            });
+        }
+    </script>
+</body>
+</html>
