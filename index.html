@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Школьное расписание </title>
+    <title>Школьное расписание | Telegram</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -662,10 +662,10 @@
             </button>
             <h1 class="text-lg font-medium flex items-center">
                 <i class="fas fa-calendar-alt mr-2 text-telegram-link"></i>
-                Расписание школы №32 
+                Школьное расписание
             </h1>
         </div>
-        <div class="flex space-x-2 ml-auto">
+        <div class="flex space-x-2 ml-auto items-center">
             <button id="homeworkBtn" class="p-2 rounded-full hover:bg-telegram-blue/10" onclick="showHomeworkModal()">
                 <i class="fas fa-tasks text-telegram-hint"></i>
             </button>
@@ -675,6 +675,14 @@
             <button id="adminBtn" class="p-2 rounded-full hover:bg-telegram-blue/10" onclick="toggleAdminMode()">
                 <i class="fas fa-key text-telegram-hint"></i>
             </button>
+            
+            <!-- Профиль пользователя (скрыт по умолчанию) -->
+            <div id="userProfile" class="hidden items-center ml-2">
+                <img id="userAvatar" src="" alt="Profile" class="w-8 h-8 rounded-full cursor-pointer" onclick="showProfileModal()">
+            </div>
+            
+            <!-- Кнопка входа через Telegram (показана по умолчанию) -->
+            <div id="telegramLogin"></div>
         </div>
     </header>
 
@@ -1264,6 +1272,64 @@
         </div>
     </div>
 
+    <!-- Добавим модальное окно профиля -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-lg font-medium flex items-center">
+                    <i class="fas fa-user mr-2 text-telegram-link"></i> Профиль
+                </h3>
+                <button class="text-telegram-hint hover:text-telegram-text" onclick="hideModal('profileModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="flex items-center mb-4">
+                    <img id="profileAvatar" src="" alt="Profile" class="w-16 h-16 rounded-full mr-4">
+                    <div>
+                        <h4 id="profileName" class="font-medium text-lg"></h4>
+                        <p id="profileUsername" class="text-telegram-hint"></p>
+                    </div>
+                </div>
+                
+                <div class="bg-telegram-blue/5 p-3 rounded-lg mb-3">
+                    <h5 class="font-medium mb-2">Статистика</h5>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="text-telegram-hint text-sm">Домашних заданий</div>
+                            <div id="profileHomeworkCount" class="text-lg font-medium">0</div>
+                        </div>
+                        <div>
+                            <div class="text-telegram-hint text-sm">Заметок</div>
+                            <div id="profileNotesCount" class="text-lg font-medium">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-telegram-blue/5 p-3 rounded-lg">
+                    <h5 class="font-medium mb-2">Настройки профиля</h5>
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-telegram-hint">Уведомления</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="profileNotifications" class="sr-only peer">
+                                <div class="w-11 h-6 bg-telegram-blue/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-telegram-button"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="logoutTelegram()">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Выйти
+                </button>
+                <button class="btn btn-primary" onclick="hideModal('profileModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Конфигурация
         const DEFAULT_LESSON_DURATION = 40;
@@ -1539,25 +1605,37 @@
         let currentCalendarMonth = new Date();
         let selectedCalendarDay = new Date();
         
-        // Исправление обработчиков кнопок отмены
-        document.addEventListener('DOMContentLoaded', () => {
-            // Добавляем обработчики закрытия для всех модальных окон
-            const modalIds = ['homeworkModal', 'notesModal', 'settingsModal', 'addLessonModal', 
-                             'editLessonModal', 'adminLoginModal', 'aboutModal', 'helpModal', 
-                             'statisticsModal', 'teachersModal', 'calendarModal'];
-            
-            modalIds.forEach(modalId => {
-                // Находим кнопки закрытия в каждом модальном окне
-                const modal = document.getElementById(modalId);
-                if (!modal) return;
-                
-                const closeBtns = modal.querySelectorAll('.modal-footer .btn-secondary, .modal-header button');
-                closeBtns.forEach(btn => {
-                    btn.onclick = function() {
-                        hideModal(modalId);
-                    };
+        // Добавим эти функции для сохранения и загрузки состояния
+        function saveCurrentState() {
+            localStorage.setItem('currentClass', currentClass);
+            localStorage.setItem('currentDay', currentDay);
+        }
+
+        function loadSavedState() {
+            // Загружаем сохраненный класс
+            const savedClass = localStorage.getItem('currentClass');
+            if (savedClass) {
+                currentClass = savedClass;
+                // Обновляем визуальное выделение класса
+                document.querySelectorAll('.class-option').forEach(option => {
+                    option.classList.remove('active');
+                    if (option.textContent.toLowerCase().replace('а', 'a').replace('б', 'b') === savedClass) {
+                        option.classList.add('active');
+                    }
                 });
-            });
+            }
+
+            // Загружаем сохраненный день
+            const savedDay = localStorage.getItem('currentDay');
+            if (savedDay) {
+                currentDay = savedDay;
+            }
+        }
+        
+        // Модифицируем обработчик DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Загружаем сохраненное состояние
+            loadSavedState();
             
             // Остальная инициализация
             loadSettings();
@@ -1569,9 +1647,26 @@
             // Обновление времени каждую минуту
             setInterval(updateClock, 60000);
             setInterval(updateCurrentLesson, 30000);
+            
+            // Добавляем обработчики закрытия для всех модальных окон
+            const modalIds = ['homeworkModal', 'notesModal', 'settingsModal', 'addLessonModal', 
+                             'editLessonModal', 'adminLoginModal', 'aboutModal', 'helpModal', 
+                             'statisticsModal', 'teachersModal', 'calendarModal'];
+            
+            modalIds.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (!modal) return;
+                
+                const closeBtns = modal.querySelectorAll('.modal-footer .btn-secondary, .modal-header button');
+                closeBtns.forEach(btn => {
+                    btn.onclick = function() {
+                        hideModal(modalId);
+                    };
+                });
+            });
         });
         
-        // Выбор класса
+        // Модифицируем функцию selectClass
         function selectClass(className) {
             currentClass = className;
             scheduleData = JSON.parse(JSON.stringify(CLASS_SCHEDULES[className]));
@@ -1584,7 +1679,7 @@
                 }
             });
             
-            // Загружаем данные из localStorage, если есть
+            // Загружаем данные из localStorage
             const savedData = localStorage.getItem(`scheduleData_${className}`);
             if (savedData) {
                 scheduleData = JSON.parse(savedData);
@@ -1600,6 +1695,9 @@
             
             showDay(currentDay);
             updateCurrentLesson();
+            
+            // Сохраняем текущее состояние
+            saveCurrentState();
         }
         
         // Генерация времени уроков и перемен
@@ -1634,7 +1732,7 @@
             }
         }
         
-        // Отображение дня расписания
+        // Модифицируем функцию showDay
         function showDay(day) {
             currentDay = day;
             
@@ -1791,6 +1889,9 @@
                     </div>
                 `;
             }
+            
+            // Сохраняем текущее состояние
+            saveCurrentState();
         }
         
         // Проверка, является ли урок текущим
@@ -3065,7 +3166,153 @@
             hideModal('teachersModal');
             showModal('teacherDetailsModal');
         }
+
+        // Глобальные переменные для работы с Telegram
+        let telegramUser = null;
+
+        // Инициализация Telegram логина
+        function initTelegramLogin() {
+            const telegramLoginDiv = document.getElementById('telegramLogin');
+            
+            // Создаем скрипт для загрузки Telegram виджета
+            const script = document.createElement('script');
+            script.src = 'https://telegram.org/js/telegram-widget.js?22';
+            script.setAttribute('data-telegram-login', 'School_Schedule_11B_BOT'); // Замените на имя вашего бота
+            script.setAttribute('data-size', 'medium');
+            script.setAttribute('data-radius', '8');
+            script.setAttribute('data-request-access', 'write');
+            script.setAttribute('data-userpic', 'true');
+            script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+            
+            telegramLoginDiv.appendChild(script);
+        }
+
+        // Callback функция после успешной авторизации
+        function onTelegramAuth(user) {
+            telegramUser = user;
+            
+            // Сохраняем данные пользователя
+            localStorage.setItem('telegramUser', JSON.stringify(user));
+            
+            // Обновляем UI
+            updateUserInterface();
+            
+            // Показываем уведомление
+            showNotification('Вы успешно вошли в систему');
+        }
+
+        // Обновление интерфейса после входа/выхода
+        function updateUserInterface() {
+            const loginDiv = document.getElementById('telegramLogin');
+            const profileDiv = document.getElementById('userProfile');
+            const userAvatar = document.getElementById('userAvatar');
+            
+            if (telegramUser) {
+                // Скрываем кнопку входа и показываем профиль
+                loginDiv.style.display = 'none';
+                profileDiv.style.display = 'flex';
+                
+                // Обновляем аватар
+                userAvatar.src = telegramUser.photo_url || 'path/to/default/avatar.png';
+                
+                // Обновляем данные в модальном окне профиля
+                document.getElementById('profileAvatar').src = telegramUser.photo_url || 'path/to/default/avatar.png';
+                document.getElementById('profileName').textContent = `${telegramUser.first_name} ${telegramUser.last_name || ''}`;
+                document.getElementById('profileUsername').textContent = `@${telegramUser.username}`;
+                
+                // Обновляем статистику
+                updateProfileStatistics();
+            } else {
+                // Показываем кнопку входа и скрываем профиль
+                loginDiv.style.display = 'block';
+                profileDiv.style.display = 'none';
+            }
+        }
+
+        // Обновление статистики профиля
+        function updateProfileStatistics() {
+            let homeworkCount = 0;
+            let notesCount = 0;
+            
+            // Подсчет домашних заданий
+            Object.values(homeworkData).forEach(dayHomework => {
+                homeworkCount += dayHomework.length;
+            });
+            
+            // Подсчет заметок
+            Object.values(notesData).forEach(dayNotes => {
+                notesCount += dayNotes.length;
+            });
+            
+            document.getElementById('profileHomeworkCount').textContent = homeworkCount;
+            document.getElementById('profileNotesCount').textContent = notesCount;
+        }
+
+        // Показ модального окна профиля
+        function showProfileModal() {
+            if (telegramUser) {
+                updateProfileStatistics();
+                showModal('profileModal');
+            }
+        }
+
+        // Выход из аккаунта
+        function logoutTelegram() {
+            telegramUser = null;
+            localStorage.removeItem('telegramUser');
+            updateUserInterface();
+            hideModal('profileModal');
+            showNotification('Вы вышли из системы');
+        }
+
+        // Проверка сохраненной сессии при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            // Существующий код инициализации...
+            
+            // Инициализация Telegram логина
+            initTelegramLogin();
+            
+            // Проверяем сохраненную сессию
+            const savedUser = localStorage.getItem('telegramUser');
+            if (savedUser) {
+                telegramUser = JSON.parse(savedUser);
+                updateUserInterface();
+            }
+        });
+
+        // Модифицируем функции работы с данными, чтобы привязать их к пользователю
+        function saveUserData(key, data) {
+            if (telegramUser) {
+                const userId = telegramUser.id;
+                localStorage.setItem(`${key}_${userId}`, JSON.stringify(data));
+            }
+        }
+
+        function loadUserData(key) {
+            if (telegramUser) {
+                const userId = telegramUser.id;
+                const data = localStorage.getItem(`${key}_${userId}`);
+                return data ? JSON.parse(data) : null;
+            }
+            return null;
+        }
+
+        // Обновляем существующие функции для работы с данными пользователя
+        function addHomework() {
+            // Существующий код...
+            
+            // Сохраняем с привязкой к пользователю
+            saveUserData(`homeworkData_${currentClass}`, homeworkData);
+        }
+
+        function addNote() {
+            // Существующий код...
+            
+            // Сохраняем с привязкой к пользователю
+            saveUserData(`notesData_${currentClass}`, notesData);
+        }
     </script>
+    
 </body>
 </html>
 
