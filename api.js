@@ -1,5 +1,5 @@
 // api.js
-const API_URL = 'http://46.8.21.39:3000';
+const API_URL = 'http://46.8.21.39:3000/api';
 
 class ClassAPI {
     static async handleResponse(response) {
