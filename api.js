@@ -1,6 +1,34 @@
 // api.js
 const API_URL = 'http://46.8.21.39:3000/api';
 
+let isApiReady = false;
+let telegramUser = null; // Добавим глобальную переменную для хранения данных пользователя
+// В начало api.js добавьте:
+async function checkServer() {
+    try {
+        const response = await fetch(`${API_URL}/api/health`);
+        if (response.ok) {
+            console.log('Server is available');
+            return true;
+        }
+        console.error('Server is not responding correctly');
+        return false;
+    } catch (error) {
+        console.error('Cannot connect to server:', error);
+        return false;
+    }
+}
+// Функция инициализации API
+function initAPI(user) {
+    console.log('Initializing API with user:', user);
+    telegramUser = user;
+    isApiReady = true;
+    // Запускаем обновление статуса
+    if (user) {
+        startStatusUpdates(user.id);
+    }
+}
+
 class ClassAPI {
     static async handleResponse(response) {
         if (!response.ok) {
@@ -10,10 +38,26 @@ class ClassAPI {
         return await response.json();
     }
 
+    static checkReady() {
+        if (!isApiReady) {
+            console.warn('API is not ready yet');
+            return false;
+        }
+        if (!telegramUser) {
+            console.warn('No Telegram user data');
+            return false;
+        }
+        return true;
+    }
+
     // Получить всех участников класса
     static async getClassMembers(className) {
+        if (!this.checkReady()) return [];
+        
+        console.log('Fetching class members for:', className);
         try {
-            const response = await fetch(`${API_URL}/class/${className}/members`);
+            const response = await fetch(`${API_URL}/api/class/${className}/members`);
+            console.log('Response:', response);
             return await this.handleResponse(response);
         } catch (error) {
             console.error('Error fetching class members:', error);
@@ -174,11 +218,23 @@ async function leaveClass(showNotify = true) {
 }
 
 async function loadAndShowClassMembers(className) {
+    console.log('Loading class members for:', className);
+    if (!telegramUser) {
+        console.warn('No user data available');
+        return;
+    }
+
     try {
         const members = await ClassAPI.getClassMembers(className);
+        console.log('Received members:', members);
         const membersList = document.getElementById('classMembersList');
         const classMemebersBlock = document.getElementById('classMembers');
         
+        if (!membersList || !classMemebersBlock) {
+            console.error('Required DOM elements not found');
+            return;
+        }
+
         if (members && members.length > 0) {
             membersList.innerHTML = members.map(member => `
                 <div class="flex items-center py-2">
@@ -248,3 +304,4 @@ async function updateClassesModalContent() {
 window.ClassAPI = ClassAPI;
 window.startStatusUpdates = startStatusUpdates;
 window.stopStatusUpdates = stopStatusUpdates;
+window.initAPI = initAPI;
