@@ -3491,6 +3491,233 @@
         function saveClassMembers() {
             localStorage.setItem('classMembers', JSON.stringify(classMembers));
         }
+
+        // Структура данных для хранения участников классов
+        let classMembers = {
+            '10a': [],
+            '10b': [],
+            '11a': [],
+            '11b': []
+        };
+
+        // Функция инициализации данных пользователя
+        function initializeUserData() {
+            if (telegramUser) {
+                // Обновляем информацию в сайдбаре
+                document.getElementById('sidebarUserInfo').style.display = 'block';
+                document.getElementById('sidebarLoginPrompt').style.display = 'none';
+                
+                document.getElementById('sidebarUserAvatar').src = telegramUser.photo_url || 'path/to/default/avatar.png';
+                document.getElementById('sidebarUserName').textContent = `${telegramUser.first_name} ${telegramUser.last_name || ''}`;
+                document.getElementById('sidebarUserUsername').textContent = `@${telegramUser.username}`;
+                
+                // Загружаем данные о классах
+                loadClassMembers();
+                
+                // Проверяем, состоит ли пользователь в классе
+                const userClass = getUserClass();
+                if (userClass) {
+                    updateUserClassInfo(userClass);
+                    showClassMembers(userClass);
+                } else {
+                    document.getElementById('sidebarUserClass').innerHTML = `
+                        <i class="fas fa-users mr-2"></i>
+                        <span>Не состоите в классе</span>
+                        <button class="ml-2 text-telegram-link" onclick="showJoinClassModal()">
+                            <i class="fas fa-plus"></i> Присоединиться
+                        </button>
+                    `;
+                }
+            } else {
+                document.getElementById('sidebarUserInfo').style.display = 'none';
+                document.getElementById('sidebarLoginPrompt').style.display = 'block';
+            }
+        }
+
+        // Загрузка данных о участниках классов
+        function loadClassMembers() {
+            const savedMembers = localStorage.getItem('classMembers');
+            if (savedMembers) {
+                classMembers = JSON.parse(savedMembers);
+            }
+            updateClassMembersCounts();
+        }
+
+        // Сохранение данных о участниках классов
+        function saveClassMembers() {
+            localStorage.setItem('classMembers', JSON.stringify(classMembers));
+            updateClassMembersCounts();
+        }
+
+        // Обновление счетчиков участников
+        function updateClassMembersCounts() {
+            Object.keys(classMembers).forEach(className => {
+                const count = classMembers[className].length;
+                const element = document.getElementById(`class${className}Count`);
+                if (element) {
+                    element.textContent = `${count} ${declOfNum(count, ['участник', 'участника', 'участников'])}`;
+                }
+            });
+        }
+
+        // Получение класса пользователя
+        function getUserClass() {
+            if (!telegramUser) return null;
+            
+            for (const [className, members] of Object.entries(classMembers)) {
+                if (members.some(member => member.id === telegramUser.id)) {
+                    return className;
+                }
+            }
+            return null;
+        }
+
+        // Обновление информации о классе пользователя
+        function updateUserClassInfo(className) {
+            const classNames = {
+                '10a': '10 А',
+                '10b': '10 Б',
+                '11a': '11 А',
+                '11b': '11 Б'
+            };
+            
+            document.getElementById('sidebarUserClass').innerHTML = `
+                <i class="fas fa-users mr-2"></i>
+                <span>Класс: ${classNames[className]}</span>
+                <button class="ml-2 text-telegram-link" onclick="leaveClass()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            `;
+        }
+
+        // Показ списка участников класса
+        function showClassMembers(className) {
+            const membersList = document.getElementById('classMembersList');
+            const members = classMembers[className];
+            
+            if (members && members.length > 0) {
+                membersList.innerHTML = members.map(member => `
+                    <div class="flex items-center">
+                        <img src="${member.photo_url || 'path/to/default/avatar.png'}" 
+                             alt="${member.first_name}" 
+                             class="w-8 h-8 rounded-full mr-2">
+                        <div>
+                            <div class="font-medium">${member.first_name} ${member.last_name || ''}</div>
+                            <div class="text-xs text-telegram-hint">@${member.username}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('classMembers').style.display = 'block';
+            } else {
+                document.getElementById('classMembers').style.display = 'none';
+            }
+        }
+
+        // Показ модального окна присоединения к классу
+        function showJoinClassModal() {
+            updateClassMembersCounts();
+            showModal('joinClassModal');
+        }
+
+        // Присоединение к классу
+        function joinClass(className) {
+            if (!telegramUser) {
+                showNotification('Необходимо войти в систему', 'error');
+                return;
+            }
+            
+            // Проверяем, не состоит ли пользователь уже в другом классе
+            const currentClass = getUserClass();
+            if (currentClass) {
+                // Если пользователь пытается присоединиться к тому же классу
+                if (currentClass === className) {
+                    showNotification('Вы уже состоите в этом классе');
+                    hideModal('joinClassModal');
+                    return;
+                }
+                // Если пользователь состоит в другом классе, сначала выходим из него
+                leaveClass();
+            }
+            
+            // Добавляем пользователя в новый класс
+            classMembers[className].push({
+                id: telegramUser.id,
+                first_name: telegramUser.first_name,
+                last_name: telegramUser.last_name,
+                username: telegramUser.username,
+                photo_url: telegramUser.photo_url
+            });
+            
+            saveClassMembers();
+            updateUserClassInfo(className);
+            showClassMembers(className);
+            selectClass(className); // Автоматически переключаемся на расписание выбранного класса
+            
+            hideModal('joinClassModal');
+            showNotification(`Вы присоединились к классу ${className.toUpperCase()}`);
+        }
+
+        // Выход из класса
+        function leaveClass() {
+            if (!telegramUser) return;
+            
+            const currentClass = getUserClass();
+            if (currentClass) {
+                classMembers[currentClass] = classMembers[currentClass].filter(
+                    member => member.id !== telegramUser.id
+                );
+                
+                saveClassMembers();
+                document.getElementById('sidebarUserClass').innerHTML = `
+                    <i class="fas fa-users mr-2"></i>
+                    <span>Не состоите в классе</span>
+                    <button class="ml-2 text-telegram-link" onclick="showJoinClassModal()">
+                        <i class="fas fa-plus"></i> Присоединиться
+                    </button>
+                `;
+                document.getElementById('classMembers').style.display = 'none';
+                showNotification('Вы вышли из класса');
+            }
+        }
+
+        // Склонение числительных
+        function declOfNum(number, titles) {
+            const cases = [2, 0, 1, 1, 1, 2];
+            return titles[(number % 100 > 4 && number % 100 < 20) ? 2 : cases[(number % 10 < 5) ? number % 10 : 5]];
+        }
+
+        // Обновляем обработчик DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... существующий код ...
+            
+            // Инициализация данных пользователя
+            initializeUserData();
+        });
+
+        // Обновляем функцию onTelegramAuth
+        function onTelegramAuth(user) {
+            telegramUser = user;
+            localStorage.setItem('telegramUser', JSON.stringify(user));
+            updateUserInterface();
+            initializeUserData();
+            showNotification('Вы успешно вошли в систему');
+        }
+
+        // Обновляем функцию logoutTelegram
+        function logoutTelegram() {
+            const currentClass = getUserClass();
+            if (currentClass) {
+                leaveClass();
+            }
+            
+            telegramUser = null;
+            localStorage.removeItem('telegramUser');
+            updateUserInterface();
+            initializeUserData();
+            hideModal('profileModal');
+            showNotification('Вы вышли из системы');
+        }
     </script>
     
 </body>
