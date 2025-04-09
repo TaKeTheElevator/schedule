@@ -3821,10 +3821,87 @@
         function onTelegramAuth(user) {
             telegramUser = user;
             localStorage.setItem('telegramUser', JSON.stringify(user));
+            
+            // Сначала обновляем интерфейс пользователя
             updateUserInterface();
-            initializeUserData();
+            
+            // Затем инициализируем данные пользователя в сайдбаре
+            initializeSidebarUser();
+            
             showNotification('Вы успешно вошли в систему');
         }
+
+        // Создаем отдельную функцию для инициализации сайдбара
+        function initializeSidebarUser() {
+            const sidebarUserInfo = document.getElementById('sidebarUserInfo');
+            const sidebarLoginPrompt = document.getElementById('sidebarLoginPrompt');
+            const classesMenuItem = document.getElementById('classesMenuItem');
+            
+            if (telegramUser) {
+                // Показываем информацию пользователя
+                sidebarUserInfo.style.display = 'block';
+                sidebarLoginPrompt.style.display = 'none';
+                classesMenuItem.classList.remove('hidden');
+                
+                // Обновляем данные пользователя
+                document.getElementById('sidebarUserAvatar').src = telegramUser.photo_url || 'path/to/default/avatar.png';
+                document.getElementById('sidebarUserName').textContent = `${telegramUser.first_name} ${telegramUser.last_name || ''}`;
+                document.getElementById('sidebarUserUsername').textContent = `@${telegramUser.username}`;
+                
+                // Загружаем данные о классах
+                loadClassMembers();
+                
+                // Проверяем, состоит ли пользователь в классе
+                const userClass = getUserClass();
+                if (userClass) {
+                    updateUserClassInfo(userClass);
+                    showClassMembers(userClass);
+                } else {
+                    document.getElementById('sidebarUserClass').innerHTML = `
+                        <i class="fas fa-users mr-2"></i>
+                        <span>Не состоите в классе</span>
+                        <button class="ml-2 text-telegram-link" onclick="showJoinClassModal()">
+                            <i class="fas fa-plus"></i> Присоединиться
+                        </button>
+                    `;
+                }
+            } else {
+                // Скрываем информацию пользователя
+                sidebarUserInfo.style.display = 'none';
+                sidebarLoginPrompt.style.display = 'block';
+                classesMenuItem.classList.add('hidden');
+            }
+        }
+
+        // Обновляем обработчик DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Проверяем сохраненную сессию
+            const savedUser = localStorage.getItem('telegramUser');
+            if (savedUser) {
+                telegramUser = JSON.parse(savedUser);
+                // Инициализируем интерфейс
+                updateUserInterface();
+                // Инициализируем сайдбар
+                initializeSidebarUser();
+            }
+            
+            // Загружаем статус администратора
+            loadAdminStatus();
+            
+            // Остальная инициализация
+            loadSettings();
+            generateScheduleTimes();
+            selectClass(currentClass);
+            updateClock();
+            updateCurrentLesson();
+            
+            // Обновление времени
+            setInterval(updateClock, 60000);
+            setInterval(updateCurrentLesson, 30000);
+            
+            // Инициализация модальных окон
+            initializeModals();
+        });
 
         // Обновляем функцию logoutTelegram
         function logoutTelegram() {
@@ -3835,8 +3912,12 @@
             
             telegramUser = null;
             localStorage.removeItem('telegramUser');
+            
+            // Обновляем интерфейс
             updateUserInterface();
-            initializeUserData();
+            // Обновляем сайдбар
+            initializeSidebarUser();
+            
             hideModal('profileModal');
             showNotification('Вы вышли из системы');
         }
