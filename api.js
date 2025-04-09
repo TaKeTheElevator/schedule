@@ -2,12 +2,19 @@
 const API_URL = 'http://46.8.21.39:3000';
 
 class ClassAPI {
+    static async handleResponse(response) {
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.details || error.error || 'Network response was not ok');
+        }
+        return await response.json();
+    }
+
     // Получить всех участников класса
     static async getClassMembers(className) {
         try {
             const response = await fetch(`${API_URL}/class/${className}/members`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            return await this.handleResponse(response);
         } catch (error) {
             console.error('Error fetching class members:', error);
             return [];
@@ -24,8 +31,7 @@ class ClassAPI {
                 },
                 body: JSON.stringify({ telegramId, className, userData })
             });
-            if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            return await this.handleResponse(response);
         } catch (error) {
             console.error('Error joining class:', error);
             throw error;
@@ -42,8 +48,7 @@ class ClassAPI {
                 },
                 body: JSON.stringify({ telegramId })
             });
-            if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            return await this.handleResponse(response);
         } catch (error) {
             console.error('Error leaving class:', error);
             throw error;
@@ -54,8 +59,7 @@ class ClassAPI {
     static async getUserInfo(telegramId) {
         try {
             const response = await fetch(`${API_URL}/user/${telegramId}`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            return await response.json();
+            return await this.handleResponse(response);
         } catch (error) {
             console.error('Error fetching user info:', error);
             return null;
@@ -72,6 +76,45 @@ class ClassAPI {
             console.error('Error fetching class stats:', error);
             return [];
         }
+    }
+
+    static async updateUserStatus(telegramId, isOnline) {
+        try {
+            const response = await fetch(`${API_URL}/user/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ telegramId, isOnline })
+            });
+            return await this.handleResponse(response);
+        } catch (error) {
+            console.error('Error updating user status:', error);
+        }
+    }
+}
+
+// Добавим автоматическое обновление статуса
+let updateStatusInterval;
+
+function startStatusUpdates(telegramId) {
+    // Обновляем статус сразу
+    ClassAPI.updateUserStatus(telegramId, true);
+
+    // Устанавливаем интервал обновления
+    updateStatusInterval = setInterval(() => {
+        ClassAPI.updateUserStatus(telegramId, true);
+    }, 30000); // Каждые 30 секунд
+
+    // Обработка закрытия страницы
+    window.addEventListener('beforeunload', () => {
+        ClassAPI.updateUserStatus(telegramId, false);
+    });
+}
+
+function stopStatusUpdates() {
+    if (updateStatusInterval) {
+        clearInterval(updateStatusInterval);
     }
 }
 
@@ -201,5 +244,7 @@ async function updateClassesModalContent() {
     }
 }
 
-// Экспортируем API для использования в основном коде
+// Экспортируем API и функции для использования в основном коде
 window.ClassAPI = ClassAPI;
+window.startStatusUpdates = startStatusUpdates;
+window.stopStatusUpdates = stopStatusUpdates;
