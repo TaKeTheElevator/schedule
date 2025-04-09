@@ -677,6 +677,15 @@
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Преподаватели</span>
             </div>
+            
+            <!-- Добавляем разделитель -->
+            <div class="border-t border-telegram-blue/20 my-2"></div>
+            
+            <!-- Новый пункт меню Классы (виден только авторизованным) -->
+            <div id="classesMenuItem" class="sidebar-item hidden" onclick="showClassesModal()">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Классы</span>
+            </div>
         </div>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
@@ -1397,6 +1406,86 @@
             
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="hideModal('joinClassModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Обновленное меню сайдбара -->
+    <div class="sidebar-menu">
+        <!-- ... существующие пункты меню ... -->
+        
+        <!-- Добавляем разделитель -->
+        <div class="border-t border-telegram-blue/20 my-2"></div>
+        
+        <!-- Новый пункт меню Классы (виден только авторизованным) -->
+        <div id="classesMenuItem" class="sidebar-item hidden" onclick="showClassesModal()">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Классы</span>
+        </div>
+    </div>
+
+    <!-- Добавим модальное окно просмотра классов -->
+    <div class="modal-overlay" id="classesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-lg font-medium flex items-center">
+                    <i class="fas fa-graduation-cap mr-2 text-telegram-link"></i> Классы школы
+                </h3>
+                <button class="text-telegram-hint hover:text-telegram-text" onclick="hideModal('classesModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="grid grid-cols-1 gap-4">
+                    <!-- 10 А -->
+                    <div class="bg-telegram-blue/5 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-medium text-lg">10 А</h4>
+                            <span class="text-sm text-telegram-hint" id="modal10aCount">0 участников</span>
+                        </div>
+                        <div id="modal10aMembers" class="space-y-2">
+                            <!-- Участники будут добавлены динамически -->
+                        </div>
+                    </div>
+                    
+                    <!-- 10 Б -->
+                    <div class="bg-telegram-blue/5 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-medium text-lg">10 Б</h4>
+                            <span class="text-sm text-telegram-hint" id="modal10bCount">0 участников</span>
+                        </div>
+                        <div id="modal10bMembers" class="space-y-2">
+                            <!-- Участники будут добавлены динамически -->
+                        </div>
+                    </div>
+                    
+                    <!-- 11 А -->
+                    <div class="bg-telegram-blue/5 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-medium text-lg">11 А</h4>
+                            <span class="text-sm text-telegram-hint" id="modal11aCount">0 участников</span>
+                        </div>
+                        <div id="modal11aMembers" class="space-y-2">
+                            <!-- Участники будут добавлены динамически -->
+                        </div>
+                    </div>
+                    
+                    <!-- 11 Б -->
+                    <div class="bg-telegram-blue/5 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-medium text-lg">11 Б</h4>
+                            <span class="text-sm text-telegram-hint" id="modal11bCount">0 участников</span>
+                        </div>
+                        <div id="modal11bMembers" class="space-y-2">
+                            <!-- Участники будут добавлены динамически -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="hideModal('classesModal')">Закрыть</button>
             </div>
         </div>
     </div>
@@ -2126,6 +2215,7 @@
                 document.getElementById('adminBtn').innerHTML = '<i class="fas fa-key text-telegram-hint"></i>';
                 showNotification('Режим администратора отключен');
                 showDay(currentDay);
+                saveAdminStatus(); // Сохраняем статус
             } else {
                 showModal('adminLoginModal');
             }
@@ -2142,6 +2232,7 @@
                 document.getElementById('adminPassword').value = '';
                 showNotification('Режим администратора активирован');
                 showDay(currentDay);
+                saveAdminStatus(); // Сохраняем статус
             } else {
                 showNotification('Неверный пароль', 'error');
             }
@@ -3717,6 +3808,142 @@
             initializeUserData();
             hideModal('profileModal');
             showNotification('Вы вышли из системы');
+        }
+
+        // Добавим сохранение статуса администратора
+        function saveAdminStatus() {
+            localStorage.setItem('isAdmin', isAdmin);
+        }
+
+        // Загрузка статуса администратора
+        function loadAdminStatus() {
+            const savedStatus = localStorage.getItem('isAdmin');
+            if (savedStatus === 'true') {
+                isAdmin = true;
+                document.getElementById('adminMenuText').textContent = 'Выйти из режима админа';
+                document.getElementById('adminBtn').innerHTML = '<i class="fas fa-key text-telegram-link"></i>';
+                showDay(currentDay); // Обновляем отображение для показа кнопок редактирования
+            }
+        }
+
+        // Обновляем функцию toggleAdminMode
+        function toggleAdminMode() {
+            if (isAdmin) {
+                isAdmin = false;
+                document.getElementById('adminMenuText').textContent = 'Войти как админ';
+                document.getElementById('adminBtn').innerHTML = '<i class="fas fa-key text-telegram-hint"></i>';
+                showNotification('Режим администратора отключен');
+                showDay(currentDay);
+                saveAdminStatus(); // Сохраняем статус
+            } else {
+                showModal('adminLoginModal');
+            }
+        }
+
+        // Обновляем функцию adminLogin
+        function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === ADMIN_PASSWORD) {
+                isAdmin = true;
+                document.getElementById('adminMenuText').textContent = 'Выйти из режима админа';
+                document.getElementById('adminBtn').innerHTML = '<i class="fas fa-key text-telegram-link"></i>';
+                hideModal('adminLoginModal');
+                document.getElementById('adminPassword').value = '';
+                showNotification('Режим администратора активирован');
+                showDay(currentDay);
+                saveAdminStatus(); // Сохраняем статус
+            } else {
+                showNotification('Неверный пароль', 'error');
+            }
+        }
+
+        // Функция для показа модального окна классов
+        function showClassesModal() {
+            if (!telegramUser) {
+                showNotification('Необходимо войти в систему', 'error');
+                return;
+            }
+            
+            updateClassesModalContent();
+            showModal('classesModal');
+        }
+
+        // Обновление содержимого модального окна классов
+        function updateClassesModalContent() {
+            const classes = ['10a', '10b', '11a', '11b'];
+            
+            classes.forEach(className => {
+                const members = classMembers[className];
+                const countElement = document.getElementById(`modal${className}Count`);
+                const membersContainer = document.getElementById(`modal${className}Members`);
+                
+                // Обновляем счетчик
+                const count = members.length;
+                countElement.textContent = `${count} ${declOfNum(count, ['участник', 'участника', 'участников'])}`;
+                
+                // Обновляем список участников
+                if (count > 0) {
+                    membersContainer.innerHTML = members.map(member => `
+                        <div class="flex items-center">
+                            <img src="${member.photo_url || 'path/to/default/avatar.png'}" 
+                                 alt="${member.first_name}" 
+                                 class="w-8 h-8 rounded-full mr-2">
+                            <div>
+                                <div class="font-medium">${member.first_name} ${member.last_name || ''}</div>
+                                <div class="text-xs text-telegram-hint">@${member.username}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    membersContainer.innerHTML = `
+                        <div class="text-center text-telegram-hint py-2">
+                            В этом классе пока нет участников
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        // Обновляем функцию initializeUserData
+        function initializeUserData() {
+            const classesMenuItem = document.getElementById('classesMenuItem');
+            
+            if (telegramUser) {
+                // Показываем пункт меню Классы
+                classesMenuItem.classList.remove('hidden');
+                
+                // ... остальной существующий код функции ...
+            } else {
+                // Скрываем пункт меню Классы
+                classesMenuItem.classList.add('hidden');
+                
+                // ... остальной существующий код функции ...
+            }
+        }
+
+        // Обновляем обработчик DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... существующий код ...
+            
+            // Загружаем статус администратора
+            loadAdminStatus();
+            
+            // ... остальной существующий код ...
+        });
+
+        // Обновляем функции работы с классами
+        function joinClass(className) {
+            // ... существующий код ...
+            
+            // После обновления данных класса обновляем модальное окно классов
+            updateClassesModalContent();
+        }
+
+        function leaveClass() {
+            // ... существующий код ...
+            
+            // После обновления данных класса обновляем модальное окно классов
+            updateClassesModalContent();
         }
     </script>
     
