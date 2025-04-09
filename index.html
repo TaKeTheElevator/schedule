@@ -603,12 +603,39 @@
 <body class="bg-telegram-darker text-telegram-text min-h-screen">
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h3 class="font-medium">Меню</h3>
-            <button class="text-telegram-hint hover:text-telegram-text" onclick="toggleSidebar()">
-                <i class="fas fa-times"></i>
-            </button>
+        <!-- Профиль пользователя в сайдбаре -->
+        <div class="sidebar-profile p-4 border-b border-telegram-blue/20">
+            <div id="sidebarUserInfo" class="hidden">
+                <div class="flex items-center mb-3">
+                    <img id="sidebarUserAvatar" src="" alt="Profile" class="w-12 h-12 rounded-full mr-3">
+                    <div>
+                        <div id="sidebarUserName" class="font-medium"></div>
+                        <div id="sidebarUserUsername" class="text-sm text-telegram-hint"></div>
+                    </div>
+                </div>
+                <div id="sidebarUserClass" class="text-sm bg-telegram-blue/10 px-3 py-1.5 rounded-lg inline-flex items-center">
+                    <i class="fas fa-users mr-2"></i>
+                    <span>Не состоите в классе</span>
+                </div>
+            </div>
+            <div id="sidebarLoginPrompt" class="text-center py-2">
+                <p class="text-telegram-hint mb-2">Войдите, чтобы присоединиться к классу</p>
+                <div id="sidebarTelegramLogin"></div>
+            </div>
         </div>
+
+        <!-- Список участников класса -->
+        <div id="classMembers" class="border-b border-telegram-blue/20 p-4 hidden">
+            <h3 class="font-medium mb-3 flex items-center">
+                <i class="fas fa-users mr-2 text-telegram-link"></i>
+                Участники класса
+            </h3>
+            <div id="classMembersList" class="space-y-2">
+                <!-- Участники будут добавлены динамически -->
+            </div>
+        </div>
+
+        <!-- Существующее меню -->
         <div class="sidebar-menu">
             <div class="sidebar-item" onclick="showCurrentDay()">
                 <i class="fas fa-calendar-day"></i>
@@ -1326,6 +1353,50 @@
                     <i class="fas fa-sign-out-alt mr-2"></i> Выйти
                 </button>
                 <button class="btn btn-primary" onclick="hideModal('profileModal')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Добавим модальное окно выбора класса -->
+    <div class="modal-overlay" id="joinClassModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="text-lg font-medium flex items-center">
+                    <i class="fas fa-users mr-2 text-telegram-link"></i> Выбор класса
+                </h3>
+                <button class="text-telegram-hint hover:text-telegram-text" onclick="hideModal('joinClassModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <p class="text-telegram-hint mb-4">Выберите класс, к которому хотите присоединиться:</p>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <button class="join-class-btn p-4 bg-telegram-blue/5 rounded-lg hover:bg-telegram-blue/10 transition" onclick="joinClass('10a')">
+                        <h4 class="font-medium text-lg mb-1">10 А</h4>
+                        <p class="text-sm text-telegram-hint" id="class10aCount">0 участников</p>
+                    </button>
+                    
+                    <button class="join-class-btn p-4 bg-telegram-blue/5 rounded-lg hover:bg-telegram-blue/10 transition" onclick="joinClass('10b')">
+                        <h4 class="font-medium text-lg mb-1">10 Б</h4>
+                        <p class="text-sm text-telegram-hint" id="class10bCount">0 участников</p>
+                    </button>
+                    
+                    <button class="join-class-btn p-4 bg-telegram-blue/5 rounded-lg hover:bg-telegram-blue/10 transition" onclick="joinClass('11a')">
+                        <h4 class="font-medium text-lg mb-1">11 А</h4>
+                        <p class="text-sm text-telegram-hint" id="class11aCount">0 участников</p>
+                    </button>
+                    
+                    <button class="join-class-btn p-4 bg-telegram-blue/5 rounded-lg hover:bg-telegram-blue/10 transition" onclick="joinClass('11b')">
+                        <h4 class="font-medium text-lg mb-1">11 Б</h4>
+                        <p class="text-sm text-telegram-hint" id="class11bCount">0 участников</p>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('joinClassModal')">Закрыть</button>
             </div>
         </div>
     </div>
@@ -3181,7 +3252,7 @@
             script.setAttribute('data-size', 'medium');
             script.setAttribute('data-radius', '8');
             script.setAttribute('data-request-access', 'write');
-            script.setAttribute('data-userpic', 'true');
+       
             script.setAttribute('data-onauth', 'onTelegramAuth(user)');
             
             telegramLoginDiv.appendChild(script);
@@ -3310,6 +3381,115 @@
             
             // Сохраняем с привязкой к пользователю
             saveUserData(`notesData_${currentClass}`, notesData);
+        }
+
+        // Присоединение к классу
+        function joinClass(className) {
+            // Проверяем, не состоит ли пользователь уже в другом классе
+            const currentClass = getUserClass();
+            if (currentClass) {
+                showNotification(`Вы уже состоите в классе ${currentClass}`, 'error');
+                return;
+            }
+            
+            // Добавляем пользователя в новый класс
+            classMembers[className].push({
+                id: telegramUser.id,
+                first_name: telegramUser.first_name,
+                last_name: telegramUser.last_name,
+                username: telegramUser.username,
+                photo_url: telegramUser.photo_url
+            });
+            
+            saveClassMembers();
+            updateUserClassInfo(className);
+            showClassMembers(className);
+            selectClass(className); // Автоматически переключаемся на расписание выбранного класса
+            
+            hideModal('joinClassModal');
+            showNotification(`Вы присоединились к классу ${className}`);
+        }
+
+        // Получение класса пользователя
+        function getUserClass() {
+            if (!telegramUser) return null;
+            
+            for (const [className, members] of Object.entries(classMembers)) {
+                if (members.some(member => member.id === telegramUser.id)) {
+                    return className;
+                }
+            }
+            return null;
+        }
+
+        // Обновление информации о классе пользователя
+        function updateUserClassInfo(className) {
+            const classNames = {
+                '10a': '10 А',
+                '10b': '10 Б',
+                '11a': '11 А',
+                '11b': '11 Б'
+            };
+            
+            document.getElementById('sidebarUserClass').innerHTML = `
+                <i class="fas fa-users mr-2"></i>
+                <span>Класс: ${classNames[className]}</span>
+                <button class="ml-2 text-telegram-link" onclick="leaveClass()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            `;
+        }
+
+        // Показ списка участников класса
+        function showClassMembers(className) {
+            const membersList = document.getElementById('classMembersList');
+            const members = classMembers[className];
+            
+            if (members && members.length > 0) {
+                membersList.innerHTML = members.map(member => `
+                    <div class="flex items-center">
+                        <img src="${member.photo_url || 'path/to/default/avatar.png'}" 
+                             alt="${member.first_name}" 
+                             class="w-8 h-8 rounded-full mr-2">
+                        <div>
+                            <div class="font-medium">${member.first_name} ${member.last_name || ''}</div>
+                            <div class="text-xs text-telegram-hint">@${member.username}</div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                document.getElementById('classMembers').style.display = 'block';
+            } else {
+                document.getElementById('classMembers').style.display = 'none';
+            }
+        }
+
+        // Выход из класса
+        function leaveClass() {
+            if (!telegramUser) return;
+            
+            const currentClass = getUserClass();
+            if (currentClass) {
+                classMembers[currentClass] = classMembers[currentClass].filter(
+                    member => member.id !== telegramUser.id
+                );
+                
+                saveClassMembers();
+                document.getElementById('sidebarUserClass').innerHTML = `
+                    <i class="fas fa-users mr-2"></i>
+                    <span>Не состоите в классе</span>
+                    <button class="ml-2 text-telegram-link" onclick="showJoinClassModal()">
+                        <i class="fas fa-plus"></i> Присоединиться
+                    </button>
+                `;
+                document.getElementById('classMembers').style.display = 'none';
+                showNotification('Вы вышли из класса');
+            }
+        }
+
+        // Сохранение данных о участниках классов
+        function saveClassMembers() {
+            localStorage.setItem('classMembers', JSON.stringify(classMembers));
         }
     </script>
     
