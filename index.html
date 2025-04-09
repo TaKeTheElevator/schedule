@@ -4375,6 +4375,16 @@ ${event.description ? `📝 ${event.description}` : ''}
             
             // ... остальной код ...
         });
+
+        // После успешной авторизации через Telegram
+        Telegram.WebApp.onEvent('mainButtonClicked', async () => {
+            const user = Telegram.WebApp.initDataUnsafe.user;
+            if (user) {
+                console.log('Telegram user authorized:', user);
+                initAPI(user);
+                // Остальной код обработки авторизации...
+            }
+        });
     </script>
     
 </body>
